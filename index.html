@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presença ILPI – PROZ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 32px 28px; width: 100%; max-width: 440px; }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo h1 { font-size: 1.4rem; color: #1a1a2e; font-weight: 700; }
+    .logo p { color: #666; font-size: 0.88rem; margin-top: 4px; }
+    .badge { display: inline-block; background: #e8f4fd; color: #1565c0; border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; font-weight: 600; margin-bottom: 18px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 12px 14px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 1rem; color: #222; margin-bottom: 16px; transition: border-color 0.2s; background: white; }
+    input:focus, select:focus { outline: none; border-color: #1565c0; }
+    .btn { width: 100%; padding: 14px; background: #1565c0; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-bottom: 10px; }
+    .btn:hover { background: #0d47a1; }
+    .btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    .btn-verde { background: #2e7d32; } .btn-verde:hover { background: #1b5e20; }
+    .btn-vermelho { background: #c62828; } .btn-vermelho:hover { background: #b71c1c; }
+    .btn-outline { background: white; color: #1565c0; border: 2px solid #1565c0; } .btn-outline:hover { background: #e8f4fd; }
+    .msg { padding: 12px 16px; border-radius: 10px; font-size: 0.88rem; margin-top: 4px; display: none; }
+    .msg.success { background: #e8f5e9; color: #2e7d32; display: block; }
+    .msg.error { background: #ffebee; color: #c62828; display: block; }
+    .step { display: none; } .step.active { display: block; }
+    .user-info { background: #f5f5f5; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.9rem; color: #444; }
+    .user-info strong { color: #1a1a2e; }
+    .geo-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px; font-size: 0.84rem; margin-bottom: 14px; }
+    .geo-status.checking { background: #fff8e1; color: #f57f17; }
+    .geo-status.ok { background: #e8f5e9; color: #2e7d32; }
+    .geo-status.fail { background: #ffebee; color: #c62828; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.yellow { background: #f9a825; animation: pulse 1s infinite; }
+    .dot.green { background: #43a047; }
+    .dot.red { background: #e53935; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .status-box { border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; }
+    .status-box.entrada { background: #e8f5e9; border: 2px solid #43a047; }
+    .status-box.completo { background: #fff8e1; border: 2px solid #f9a825; }
+    .status-box .hora { font-size: 1.8rem; font-weight: 700; color: #1a1a2e; }
+    .status-box .label { font-size: 0.82rem; color: #666; margin-top: 4px; }
+    .link-admin { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #999; }
+    .link-admin a { color: #1565c0; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>📍 Presença ILPI</h1>
+    <p>PROZ Educação – Técnico em Enfermagem</p>
+  </div>
+
+  <!-- STEP 1: Login -->
+  <div class="step active" id="step-login">
+    <div class="badge">Acesso do Aluno</div>
+    <label for="cpf">CPF</label>
+    <input type="text" id="cpf" placeholder="Digite seu CPF (só números)" inputmode="numeric" maxlength="11" />
+    <button class="btn" onclick="fazerLogin()">Entrar</button>
+    <div class="msg" id="msg-login"></div>
+  </div>
+
+  <!-- STEP 2: Selecionar local e registrar -->
+  <div class="step" id="step-presenca">
+    <div class="badge">Registrar Presença</div>
+    <div class="user-info" id="user-info"></div>
+    <label for="local">Local de Estágio</label>
+    <select id="local">
+      <option value="">Carregando locais...</option>
+    </select>
+    <div class="geo-status checking" id="geo-status">
+      <span class="dot yellow"></span>
+      <span>Aguardando seleção do local...</span>
+    </div>
+    <div id="status-entrada" style="display:none"></div>
+    <button class="btn btn-verde" id="btn-entrada" onclick="registrar('entrada')" disabled>🟢 Registrar Entrada</button>
+    <button class="btn btn-vermelho" id="btn-saida" onclick="registrar('saida')" disabled style="display:none">🔴 Registrar Saída</button>
+    <button class="btn btn-outline" onclick="sair()">Sair</button>
+    <div class="msg" id="msg-presenca"></div>
+  </div>
+
+  <!-- STEP 3: Confirmação -->
+  <div class="step" id="step-ok">
+    <div style="text-align:center;padding:16px 0 8px;">
+      <div style="font-size:3rem;" id="confirm-icon">✅</div>
+      <h2 style="margin:12px 0 8px;" id="confirm-titulo">Registrado!</h2>
+      <p style="color:#555;" id="confirm-text"></p>
+    </div>
+    <div id="confirm-horas" style="display:none;background:#e8f5e9;border-radius:10px;padding:16px;text-align:center;margin:14px 0;">
+      <div style="font-size:0.85rem;color:#555;">Carga horária do dia</div>
+      <div style="font-size:2rem;font-weight:700;color:#2e7d32;" id="confirm-total"></div>
+    </div>
+    <button class="btn" onclick="novoRegistro()">Novo Registro</button>
+  </div>
+
+  <div class="link-admin"><a href="admin.html">Acesso Coordenação →</a></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://popryznbbmzbzaowfeoc.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvcHJ5em5iYm16Ynphb3dmZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MDI3NDcsImV4cCI6MjA5Nzk3ODc0N30.xkPhLr-76Vtdo5yTC4hJRg52aM4-8bwQyGBqtzouJKE';
+  const RAIO_METROS = 200;
+
+  let alunoLogado = null;
+  let locaisCache = [];
+
+  async function supabaseFetch(path, options = {}) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation', ...options.headers },
+      ...options
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+    return data;
+  }
+
+  // Carregar locais do banco ao abrir
+  async function carregarLocais() {
+    try {
+      const locais = await supabaseFetch('/locais_ilpi?ativo=eq.true&order=nome.asc');
+      locaisCache = locais;
+      const sel = document.getElementById('local');
+      sel.innerHTML = '<option value="">Selecione o local...</option>' +
+        locais.map(l => `<option value="${l.id}" data-lat="${l.latitude}" data-lng="${l.longitude}">${l.nome}</option>`).join('');
+    } catch(e) {
+      document.getElementById('local').innerHTML = '<option value="">Erro ao carregar locais</option>';
+    }
+  }
+
+  // ── LOGIN ─────────────────────────
+  async function fazerLogin() {
+    const cpf = document.getElementById('cpf').value.trim().replace(/\D/g,'');
+    const msg = document.getElementById('msg-login');
+    if (!cpf) { showMsg(msg, 'error', 'Digite seu CPF.'); return; }
+    const btn = document.querySelector('#step-login .btn');
+    btn.disabled = true; btn.textContent = 'Verificando...';
+    try {
+      const data = await supabaseFetch(`/alunos_ilpi?cpf=eq.${encodeURIComponent(cpf)}`);
+      if (!data.length) { showMsg(msg, 'error', 'CPF não encontrado. Fale com a coordenação.'); return; }
+      alunoLogado = data[0];
+      document.getElementById('user-info').innerHTML = `<strong>${alunoLogado.nome}</strong><br>Matrícula: ${alunoLogado.matricula}`;
+      await carregarLocais();
+      trocarStep('step-presenca');
+    } catch(e) {
+      showMsg(msg, 'error', 'Sem conexão. Verifique o Wi-Fi ou dados móveis.');
+    } finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+  }
+
+  // ── GPS AO SELECIONAR LOCAL ───────
+  document.getElementById('local').addEventListener('change', async function() {
+    const opt = this.options[this.selectedIndex];
+    const geo = document.getElementById('geo-status');
+    const btnEntrada = document.getElementById('btn-entrada');
+    const btnSaida = document.getElementById('btn-saida');
+    const statusEntrada = document.getElementById('status-entrada');
+
+    if (!opt.value) {
+      geo.className = 'geo-status checking';
+      geo.innerHTML = '<span class="dot yellow"></span><span>Aguardando seleção do local...</span>';
+      btnEntrada.disabled = true; btnSaida.style.display = 'none';
+      btnEntrada.style.display = 'block'; statusEntrada.style.display = 'none';
+      return;
+    }
+
+    const lat = parseFloat(opt.dataset.lat);
+    const lng = parseFloat(opt.dataset.lng);
+    const hoje = new Date().toISOString().split('T')[0];
+
+    geo.className = 'geo-status checking';
+    geo.innerHTML = '<span class="dot yellow"></span><span>Verificando sua localização...</span>';
+    btnEntrada.disabled = true; btnSaida.disabled = true;
+
+    // Verificar registros de hoje
+    try {
+      const registros = await supabaseFetch(`/presencas_ilpi?aluno_id=eq.${alunoLogado.id}&ilpi=eq.${opt.value}&data=eq.${hoje}&order=created_at.asc`);
+      const temEntrada = registros.find(r => r.tipo === 'entrada');
+      const temSaida = registros.find(r => r.tipo === 'saida');
+
+      if (temEntrada && temSaida) {
+        const horas = calcularHoras(temEntrada.horario, temSaida.horario);
+        statusEntrada.style.display = 'block';
+        statusEntrada.innerHTML = `<div class="status-box completo"><div class="hora">${horas}</div><div class="label">✅ Entrada ${temEntrada.horario} · Saída ${temSaida.horario} – Presença completa hoje!</div></div>`;
+        btnEntrada.style.display = 'none'; btnSaida.style.display = 'none';
+      } else if (temEntrada && !temSaida) {
+        statusEntrada.style.display = 'block';
+        statusEntrada.innerHTML = `<div class="status-box entrada"><div class="hora">${temEntrada.horario}</div><div class="label">✅ Entrada registrada – agora registre a saída</div></div>`;
+        btnEntrada.style.display = 'none'; btnSaida.style.display = 'block';
+      } else {
+        statusEntrada.style.display = 'none';
+        btnEntrada.style.display = 'block'; btnSaida.style.display = 'none';
+      }
+    } catch(e) {}
+
+    // Verificar GPS
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const dist = calcularDistancia(pos.coords.latitude, pos.coords.longitude, lat, lng);
+        if (dist <= RAIO_METROS) {
+          geo.className = 'geo-status ok';
+          geo.innerHTML = `<span class="dot green"></span><span>Você está no local (${Math.round(dist)}m) ✓</span>`;
+          if (document.getElementById('btn-saida').style.display !== 'none') { btnSaida.disabled = false; }
+          else if (document.getElementById('btn-entrada').style.display !== 'none') { btnEntrada.disabled = false; }
+        } else {
+          geo.className = 'geo-status fail';
+          geo.innerHTML = `<span class="dot red"></span><span>Você está a ${Math.round(dist)}m do local. Vá até o local.</span>`;
+        }
+      },
+      (err) => {
+        geo.className = 'geo-status fail';
+        let txt = 'GPS indisponível. ';
+        if (err.code === 1) txt += 'Permita a localização nas configurações.';
+        else if (err.code === 2) txt += 'Sinal fraco. Vá para um local aberto.';
+        else txt += 'Tente novamente.';
+        geo.innerHTML = `<span class="dot red"></span><span>${txt}</span>`;
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  });
+
+  // ── REGISTRAR ENTRADA OU SAÍDA ────
+  async function registrar(tipo) {
+    const localSelect = document.getElementById('local');
+    const opt = localSelect.options[localSelect.selectedIndex];
+    const localNome = opt.text;
+    const localId = opt.value;
+    const msg = document.getElementById('msg-presenca');
+    const btn = tipo === 'entrada' ? document.getElementById('btn-entrada') : document.getElementById('btn-saida');
+
+    btn.disabled = true; btn.textContent = '⏳ Registrando...';
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = parseFloat(opt.dataset.lat);
+      const lng = parseFloat(opt.dataset.lng);
+      const dist = calcularDistancia(pos.coords.latitude, pos.coords.longitude, lat, lng);
+
+      if (dist > RAIO_METROS) {
+        showMsg(msg, 'error', `Você saiu do raio do local (${Math.round(dist)}m). Registro negado.`);
+        btn.disabled = false;
+        btn.textContent = tipo === 'entrada' ? '🟢 Registrar Entrada' : '🔴 Registrar Saída';
+        return;
+      }
+
+      try {
+        const agora = new Date();
+        const hoje = agora.toISOString().split('T')[0];
+        const horario = agora.toTimeString().slice(0,5);
+
+        await supabaseFetch('/presencas_ilpi', {
+          method: 'POST',
+          body: JSON.stringify({
+            aluno_id: alunoLogado.id, aluno_nome: alunoLogado.nome,
+            matricula: alunoLogado.matricula, cpf: alunoLogado.cpf,
+            ilpi: localId, ilpi_nome: localNome,
+            data: hoje, horario, tipo,
+            latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+            distancia_m: Math.round(dist)
+          })
+        });
+
+        let horasTotal = null;
+        if (tipo === 'saida') {
+          const registros = await supabaseFetch(`/presencas_ilpi?aluno_id=eq.${alunoLogado.id}&ilpi=eq.${localId}&data=eq.${hoje}&tipo=eq.entrada&order=created_at.asc&limit=1`);
+          if (registros.length) {
+            horasTotal = calcularHoras(registros[0].horario, horario);
+            await supabaseFetch(`/presencas_ilpi?aluno_id=eq.${alunoLogado.id}&ilpi=eq.${localId}&data=eq.${hoje}&tipo=eq.saida`, {
+              method: 'PATCH', body: JSON.stringify({ carga_horaria: horasTotal })
+            });
+          }
+        }
+
+        document.getElementById('confirm-icon').textContent = tipo === 'entrada' ? '🟢' : '🔴';
+        document.getElementById('confirm-titulo').textContent = tipo === 'entrada' ? 'Entrada Registrada!' : 'Saída Registrada!';
+        document.getElementById('confirm-titulo').style.color = tipo === 'entrada' ? '#2e7d32' : '#c62828';
+        document.getElementById('confirm-text').innerHTML = `<strong>${alunoLogado.nome}</strong><br>${localNome}<br>${agora.toLocaleDateString('pt-BR')} às ${horario}`;
+
+        const confirmHoras = document.getElementById('confirm-horas');
+        if (tipo === 'saida' && horasTotal) {
+          confirmHoras.style.display = 'block';
+          document.getElementById('confirm-total').textContent = horasTotal;
+        } else { confirmHoras.style.display = 'none'; }
+
+        trocarStep('step-ok');
+      } catch(e) {
+        showMsg(msg, 'error', 'Erro ao salvar. Verifique a conexão e tente novamente.');
+        btn.disabled = false;
+        btn.textContent = tipo === 'entrada' ? '🟢 Registrar Entrada' : '🔴 Registrar Saída';
+      }
+    }, (err) => {
+      showMsg(msg, 'error', 'GPS indisponível. Ative a localização e tente novamente.');
+      btn.disabled = false;
+      btn.textContent = tipo === 'entrada' ? '🟢 Registrar Entrada' : '🔴 Registrar Saída';
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+  }
+
+  function calcularHoras(horaEntrada, horaSaida) {
+    const [hE, mE] = horaEntrada.split(':').map(Number);
+    const [hS, mS] = horaSaida.split(':').map(Number);
+    let min = (hS * 60 + mS) - (hE * 60 + mE);
+    if (min < 0) min += 24 * 60;
+    return `${String(Math.floor(min/60)).padStart(2,'0')}h${String(min%60).padStart(2,'0')}min`;
+  }
+
+  function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function sair() {
+    alunoLogado = null;
+    document.getElementById('cpf').value = '';
+    document.getElementById('local').innerHTML = '<option value="">Carregando locais...</option>';
+    document.getElementById('geo-status').className = 'geo-status checking';
+    document.getElementById('geo-status').innerHTML = '<span class="dot yellow"></span><span>Aguardando seleção do local...</span>';
+    document.getElementById('btn-entrada').disabled = true;
+    document.getElementById('btn-entrada').style.display = 'block';
+    document.getElementById('btn-saida').style.display = 'none';
+    document.getElementById('status-entrada').style.display = 'none';
+    trocarStep('step-login');
+  }
+
+  function novoRegistro() {
+    document.getElementById('local').value = '';
+    document.getElementById('geo-status').className = 'geo-status checking';
+    document.getElementById('geo-status').innerHTML = '<span class="dot yellow"></span><span>Aguardando seleção do local...</span>';
+    document.getElementById('btn-entrada').disabled = true;
+    document.getElementById('btn-entrada').style.display = 'block';
+    document.getElementById('btn-saida').style.display = 'none';
+    document.getElementById('status-entrada').style.display = 'none';
+    trocarStep('step-presenca');
+  }
+
+  function trocarStep(id) { document.querySelectorAll('.step').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  function showMsg(el, type, text) { el.className = `msg ${type}`; el.textContent = text; }
+
+  document.getElementById('cpf').addEventListener('keydown', e => { if(e.key==='Enter') fazerLogin(); });
+</script>
+</body>
+</html>

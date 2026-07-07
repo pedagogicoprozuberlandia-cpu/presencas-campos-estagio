@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Coordenação – Presenças ILPI</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+    .topbar {
+      background: #1a1a2e; color: white;
+      padding: 16px 28px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    }
+    .topbar h1 { font-size: 1.1rem; font-weight: 600; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+    .login-card {
+      background: white; border-radius: 16px;
+      padding: 36px 32px; max-width: 380px;
+      margin: 60px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .login-card h2 { margin-bottom: 20px; color: #1a1a2e; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 6px; }
+    input, select {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 0.95rem; margin-bottom: 14px; background: white;
+    }
+    input:focus, select:focus { outline: none; border-color: #1565c0; }
+    .btn { padding: 11px 20px; background: #1565c0; color: white; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #0d47a1; }
+    .btn-red { background: #c62828; } .btn-red:hover { background: #b71c1c; }
+    .btn-green { background: #2e7d32; } .btn-green:hover { background: #1b5e20; }
+    .btn-full { width: 100%; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat-card { background: white; border-radius: 12px; padding: 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .stat-card .num { font-size: 2rem; font-weight: 700; color: #1565c0; }
+    .stat-card .lbl { font-size: 0.8rem; color: #777; margin-top: 4px; }
+    .filters { background: white; border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .filters .f { display: flex; flex-direction: column; gap: 4px; }
+    .filters label { margin-bottom: 0; }
+    .filters input, .filters select { margin-bottom: 0; min-width: 140px; }
+    .table-wrap { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; }
+    .table-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; flex-wrap: wrap; gap: 10px; }
+    .table-header h2 { font-size: 1rem; color: #1a1a2e; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f5f7fa; text-align: left; padding: 10px 14px; font-size: 0.78rem; color: #666; font-weight: 600; text-transform: uppercase; }
+    td { padding: 10px 14px; font-size: 0.87rem; color: #333; border-top: 1px solid #f0f0f0; }
+    tr:hover td { background: #fafbfc; }
+    .badge-tipo { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .b-entrada { background: #e8f5e9; color: #2e7d32; }
+    .b-saida   { background: #ffebee; color: #c62828; }
+    .badge-ilpi { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: #e3f2fd; color: #1565c0; }
+    .empty { text-align: center; padding: 40px; color: #aaa; }
+    .msg { padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; margin-top: 10px; display: none; }
+    .msg.error { background: #ffebee; color: #c62828; display: block; }
+    #painel { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="login-admin">
+  <div class="login-card">
+    <h2>🔐 Coordenação</h2>
+    <label>Senha de acesso</label>
+    <input type="password" id="senha-admin" placeholder="Digite a senha" />
+    <button class="btn btn-full" onclick="loginAdmin()">Entrar</button>
+    <div class="msg" id="msg-login"></div>
+    <p style="margin-top:16px;font-size:0.8rem;color:#999;text-align:center">
+      <a href="index.html" style="color:#1565c0;text-decoration:none">← Voltar ao registro</a>
+    </p>
+  </div>
+</div>
+
+<div id="painel">
+  <div class="topbar">
+    <h1>📋 Presenças ILPI – Coordenação PROZ</h1>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <span id="ultimo-update" style="font-size:0.82rem;color:#aaa;align-self:center"></span>
+      <button class="btn btn-green" onclick="exportarExcel()" style="padding:8px 14px;font-size:0.82rem;">⬇ Exportar Excel</button>
+      <a href="alunos.html" style="padding:8px 14px;font-size:0.82rem;background:#455a64;color:white;border-radius:10px;text-decoration:none;">👥 Alunos</a>
+      <a href="locais.html" style="padding:8px 14px;font-size:0.82rem;background:#2e7d32;color:white;border-radius:10px;text-decoration:none;">📍 Locais</a>
+      <button class="btn btn-red" onclick="sairAdmin()" style="padding:8px 14px;font-size:0.82rem;">Sair</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats">
+      <div class="stat-card"><div class="num" id="stat-hoje">-</div><div class="lbl">Presenças hoje</div></div>
+      <div class="stat-card"><div class="num" id="stat-alunos">-</div><div class="lbl">Alunos hoje</div></div>
+      <div class="stat-card"><div class="num" id="stat-mes">-</div><div class="lbl">Presenças no mês</div></div>
+      <div class="stat-card"><div class="num" id="stat-horas">-</div><div class="lbl">Total horas no mês</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="f"><label>Data inicial</label><input type="date" id="f-ini" /></div>
+      <div class="f"><label>Data final</label><input type="date" id="f-fim" /></div>
+      <div class="f">
+        <label>ILPI</label>
+        <select id="f-ilpi">
+          <option value="">Todas</option>
+          <option value="santanna">Casa Sant'Anna</option>
+          <option value="arte_cuidar">Arte de Cuidar</option>
+          <option value="andre_luiz">Lar André Luiz</option>
+          <option value="por_do_sol">Lar Pôr do Sol</option>
+          <option value="filadelia">Lar Levi (LEVI)</option>
+        </select>
+      </div>
+      <div class="f"><label>Aluno</label><input type="text" id="f-aluno" placeholder="Buscar nome..." /></div>
+      <div class="f" style="justify-content:flex-end"><button class="btn" onclick="carregar()">🔍 Filtrar</button></div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>Registros de Presença</h2>
+        <span style="font-size:0.82rem;color:#888" id="total-label"></span>
+      </div>
+      <div id="tabela-container"><div class="empty">Carregando...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://popryznbbmzbzaowfeoc.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvcHJ5em5iYm16Ynphb3dmZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MDI3NDcsImV4cCI6MjA5Nzk3ODc0N30.xkPhLr-76Vtdo5yTC4hJRg52aM4-8bwQyGBqtzouJKE';
+  const SENHA_ADMIN = 'proz2025';
+
+  let todosRegistros = [];
+
+  function loginAdmin() {
+    const s = document.getElementById('senha-admin').value;
+    if (s === SENHA_ADMIN) {
+      document.getElementById('login-admin').style.display = 'none';
+      document.getElementById('painel').style.display = 'block';
+      iniciar();
+    } else {
+      const msg = document.getElementById('msg-login');
+      msg.className = 'msg error'; msg.textContent = 'Senha incorreta.';
+    }
+  }
+  document.getElementById('senha-admin').addEventListener('keydown', e => { if(e.key==='Enter') loginAdmin(); });
+
+  function sairAdmin() {
+    document.getElementById('login-admin').style.display = 'block';
+    document.getElementById('painel').style.display = 'none';
+    document.getElementById('senha-admin').value = '';
+  }
+
+  async function supabaseFetch(path) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    return res.json();
+  }
+
+  function iniciar() {
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('f-ini').value = hoje.slice(0,8) + '01';
+    document.getElementById('f-fim').value = hoje;
+    carregar();
+    setInterval(carregar, 60000);
+  }
+
+  async function carregar() {
+    const ini = document.getElementById('f-ini').value;
+    const fim = document.getElementById('f-fim').value;
+    const ilpi = document.getElementById('f-ilpi').value;
+    const aluno = document.getElementById('f-aluno').value.trim();
+
+    let q = `/presencas_ilpi?order=data.desc,horario.desc`;
+    if (ini) q += `&data=gte.${ini}`;
+    if (fim) q += `&data=lte.${fim}`;
+    if (ilpi) q += `&ilpi=eq.${ilpi}`;
+    if (aluno) q += `&aluno_nome=ilike.*${encodeURIComponent(aluno)}*`;
+
+    const data = await supabaseFetch(q);
+    todosRegistros = data;
+    renderTabela(data);
+    calcularStats();
+    document.getElementById('ultimo-update').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+  }
+
+  function calcularStats() {
+    const hoje = new Date().toISOString().split('T')[0];
+    const mes = hoje.slice(0,7);
+    const hojeRegs = todosRegistros.filter(r => r.data === hoje);
+    const mesRegs = todosRegistros.filter(r => r.data && r.data.startsWith(mes));
+    const alunosHoje = new Set(hojeRegs.map(r => r.aluno_id)).size;
+
+    // Calcular total de horas do mês
+    let totalMin = 0;
+    const saidas = mesRegs.filter(r => r.tipo === 'saida' && r.carga_horaria);
+    saidas.forEach(r => {
+      const m = r.carga_horaria.match(/(\d+)h(\d+)/);
+      if (m) totalMin += parseInt(m[1]) * 60 + parseInt(m[2]);
+    });
+    const th = Math.floor(totalMin / 60);
+    const tm = totalMin % 60;
+
+    document.getElementById('stat-hoje').textContent = new Set(hojeRegs.filter(r=>r.tipo==='entrada').map(r=>r.aluno_id)).size;
+    document.getElementById('stat-alunos').textContent = alunosHoje;
+    document.getElementById('stat-mes').textContent = new Set(mesRegs.filter(r=>r.tipo==='entrada').map(r=>r.aluno_id+'_'+r.data)).size;
+    document.getElementById('stat-horas').textContent = `${th}h${String(tm).padStart(2,'0')}`;
+  }
+
+  function renderTabela(data) {
+    document.getElementById('total-label').textContent = `${data.length} registro(s)`;
+    const cont = document.getElementById('tabela-container');
+    if (!data.length) { cont.innerHTML = '<div class="empty">Nenhum registro encontrado.</div>'; return; }
+
+    const rows = data.map(r => {
+      const dt = r.data ? r.data.split('-').reverse().join('/') : '-';
+      const tipo = r.tipo === 'entrada'
+        ? '<span class="badge-tipo b-entrada">🟢 Entrada</span>'
+        : '<span class="badge-tipo b-saida">🔴 Saída</span>';
+      const horas = r.carga_horaria ? `<strong>${r.carga_horaria}</strong>` : '-';
+      return `<tr>
+        <td>${dt}</td>
+        <td>${r.horario || '-'}</td>
+        <td>${tipo}</td>
+        <td><strong>${r.aluno_nome || '-'}</strong></td>
+        <td>${r.cpf ? r.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : '-'}</td>
+        <td><span class="badge-ilpi">${r.ilpi_nome || '-'}</span></td>
+        <td>${horas}</td>
+      </tr>`;
+    }).join('');
+
+    cont.innerHTML = `<table>
+      <thead><tr>
+        <th>Data</th><th>Horário</th><th>Tipo</th><th>Aluno</th><th>CPF</th><th>ILPI</th><th>C. Horária</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function exportarExcel() {
+    if (!todosRegistros.length) { alert('Nenhum dado para exportar.'); return; }
+
+    // Agrupar por aluno + ILPI + data para montar linha completa
+    const mapa = {};
+    todosRegistros.forEach(r => {
+      const chave = `${r.aluno_id}_${r.ilpi}_${r.data}`;
+      if (!mapa[chave]) mapa[chave] = { aluno: r.aluno_nome, cpf: r.cpf, matricula: r.matricula, ilpi: r.ilpi_nome, data: r.data, entrada: '-', saida: '-', horas: '-' };
+      if (r.tipo === 'entrada') mapa[chave].entrada = r.horario;
+      if (r.tipo === 'saida')   { mapa[chave].saida = r.horario; if (r.carga_horaria) mapa[chave].horas = r.carga_horaria; }
+    });
+
+    const linhas = Object.values(mapa).sort((a,b) => a.data < b.data ? 1 : -1);
+    const ws_data = [
+      ['Nome do Aluno', 'CPF', 'Matrícula', 'ILPI', 'Data', 'Entrada', 'Saída', 'Carga Horária'],
+      ...linhas.map(l => [
+        l.aluno,
+        l.cpf ? l.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : '',
+        l.matricula || '',
+        l.ilpi || '',
+        l.data ? l.data.split('-').reverse().join('/') : '',
+        l.entrada,
+        l.saida,
+        l.horas
+      ])
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!cols'] = [30,18,14,22,12,10,10,14].map(w => ({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Presenças ILPI');
+    XLSX.writeFile(wb, `presencas_ilpi_${new Date().toISOString().split('T')[0]}.xlsx`);
+  }
+</script>
+</body>
+</html>
